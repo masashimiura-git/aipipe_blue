@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIパイプカウンター - 現場の「数える」を、AIでもっと簡単に。</title>
+    <!-- ファビコンの設定 -->
+    <link rel="icon" href="https://i.imgur.com/6fYq9IS.png" type="image/png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+    <style>
+        /* CSSスタイル */
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #F8FAFC; /* 少し青みがかったグレーに変更 */
+            color: #334155;
+        }
+        /* 見出しのスタイル */
+        .section-heading {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 2rem; /* 4remから2remに変更して余白を狭くしました */
+            line-height: 1.5;
+            color: #1e3a8a; /* blue-900 */
+        }
+        
+        .dark-section .section-heading {
+            color: white;
+        }
+
+        /* テキストハイライト */
+        .text-highlight {
+            color: #2563eb;
+            font-weight: 700;
+            background: linear-gradient(to top, rgba(191, 219, 254, 1) 20%, transparent 20%); /* blue-200 */
+            padding-bottom: 0.1em;
+        }
+        /* タイムライン */
+        .timeline-line {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            bottom: -20px;
+            width: 2px;
+            background-color: #CBD5E1;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Scroll Animations */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .delay-100 { transition-delay: 0.1s; }
+        .delay-200 { transition-delay: 0.2s; }
+        .delay-300 { transition-delay: 0.3s; }
+        .delay-400 { transition-delay: 0.4s; }
+        .delay-500 { transition-delay: 0.5s; }
+
+        /* 背景パターン */
+        .bg-pattern-dots {
+            background-image: radial-gradient(#93c5fd 1.5px, transparent 1.5px); /* blue-300 dots */
+            background-size: 24px 24px;
+        }
+
+        /* CTA Button Shimmer Effect */
+        .btn-shimmer {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-shimmer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to right,
+                transparent 0%,
+                rgba(255, 255, 255, 0.3) 50%,
+                transparent 100%
+            );
+            transform: skewX(-25deg);
+            animation: shimmer 3s infinite ease-in-out;
+            pointer-events: none;
+        }
+        @keyframes shimmer {
+            0% { left: -150%; }
+            20% { left: 150%; }
+            100% { left: 150%; }
+        }
+        
+        /* YouTube Thumbnail Overlay */
+        .yt-thumbnail-container:hover .yt-play-icon {
+            transform: scale(1.1);
+            background-color: #cc0000;
+        }
+        /* Aspect Ratio Plugin for Tailwind (Manual implementation) */
+        .aspect-w-16 { position: relative; padding-bottom: 56.25%; }
+        .aspect-w-16 > * { position: absolute; height: 100%; width: 100%; top: 0; right: 0; bottom: 0; left: 0; }
+
+        /* モーダル用のCSS */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 60;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(-20px);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        /* 画像拡大モーダル用の追加CSS */
+        .image-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100; /* 他の要素より前面に */
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            padding: 20px;
+        }
+        .image-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .image-modal-content {
+            max-width: 95%;
+            max-height: 95vh;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            transform: scale(0.95);
+            transition: transform 0.3s;
+        }
+        .image-modal-overlay.active .image-modal-content {
+            transform: scale(1);
+        }
+        .image-zoom-hint {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            cursor: zoom-in;
+        }
+        .group:hover .image-zoom-hint {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <header class="bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-md transition-all duration-300">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center relative">
+            <div class="flex items-center gap-4">
+                <a href="#" class="text-2xl font-bold text-blue-900 tracking-tighter flex items-center gap-2">
+                    <!-- ロゴ画像の設置 -->
+                    <img src="https://i.imgur.com/6fYq9IS.png" alt="AIパイプカウンター ロゴ" class="w-8 h-8 rounded-md">
+                    AIパイプカウンター
+                </a>
+                <p class="hidden lg:block text-xs text-gray-500 font-medium border-l border-gray-300 pl-4 py-1 leading-none">
+                    現場の「数える」を、AIでもっと簡単に。
+                </p>
+            </div>
+            
+            <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
+                <a href="#use-cases" class="text-gray-600 hover:text-blue-700 transition">活用シーン</a>
+                <a href="#effects" class="text-gray-600 hover:text-blue-700 transition">導入効果</a>
+                <a href="#benefits" class="text-gray-600 hover:text-blue-700 transition">導入メリット</a>
+                <a href="#how-to-use" class="text-gray-600 hover:text-blue-700 transition">基本操作</a>
+                <a href="#contact" class="bg-blue-600 text-white px-5 py-2 rounded-full hover:bg-blue-700 transition shadow-md hover:shadow-lg transform hover:-translate-y-0.5 btn-shimmer">デモを利用する</a>
+                <a href="#contact" class="text-blue-800 px-5 py-2 rounded-full border border-blue-800 hover:bg-blue-50 transition">お問い合わせ</a>
+            </nav>
+
+            <button id="mobile-menu-button" class="md:hidden focus:outline-none text-gray-700">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+
+            <div id="mobile-menu" class="hidden md:hidden bg-white border-t absolute top-full left-0 w-full shadow-xl z-40">
+                <nav class="flex flex-col p-4 space-y-3 text-sm font-medium">
+                    <a href="#use-cases" class="block text-gray-600 hover:text-blue-800 py-3 border-b border-gray-100">活用シーン</a>
+                    <a href="#effects" class="block text-gray-600 hover:text-blue-800 py-3 border-b border-gray-100">導入効果</a>
+                    <a href="#benefits" class="block text-gray-600 hover:text-blue-800 py-3 border-b border-gray-100">導入メリット</a>
+                    <a href="#how-to-use" class="block text-gray-600 hover:text-blue-800 py-3 border-b border-gray-100">基本操作</a>
+                    <div class="flex flex-col gap-3 mt-4">
+                        <a href="#contact" class="block bg-blue-700 text-white px-5 py-3 rounded-lg hover:bg-blue-800 transition text-center shadow-md btn-shimmer">デモを利用する</a>
+                        <a href="#contact" class="block text-blue-800 px-5 py-3 rounded-lg hover:bg-blue-50 transition text-center border border-blue-800">お問い合わせ</a>
+                    </div>
+                </nav>
+                <div class="bg-gray-50 py-3 text-center border-t border-gray-100">
+                    <p class="text-xs text-gray-500 font-bold tracking-wide">現場の「数える」を、AIでもっと簡単に。</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="relative min-h-[85vh] flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-blue-600 text-white overflow-hidden py-12 md:py-20">
+            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+            <div class="absolute bottom-0 right-0 w-1/2 h-1/2 bg-blue-400 opacity-20 blur-[100px] rounded-full pointer-events-none"></div>
+
+            <div class="container mx-auto px-6 relative z-10">
+                <div class="flex flex-col md:flex-row items-center gap-12 md:gap-20">
+                    <div class="w-full md:w-1/2 text-center md:text-left fade-up delay-100">
+                        <div class="inline-block bg-blue-900/50 border border-blue-400/30 rounded-full px-4 py-1 mb-6 text-sm font-medium text-blue-200 backdrop-blur-sm">
+                            AI画像認識で現場を変える
+                        </div>
+                        <h1 class="text-3xl md:text-6xl font-extrabold leading-tight tracking-tight">
+                            数秒で正確！<br>
+                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-300 whitespace-nowrap">AIパイプカウンター</span>
+                        </h1>
+                        <p class="mt-6 text-lg md:text-xl text-blue-100 leading-relaxed opacity-90">
+                            もう数える手間もミスも不要。<br>
+                            AIが写真から瞬時にカウント。<br>
+                            現場の作業効率を劇的に改善します。
+                        </p>
+                        
+                        <div class="mt-8">
+                             <ul class="space-y-3 text-lg text-blue-50 inline-block text-left">
+                                <li class="flex items-center gap-3">
+                                    <!-- 修正: bg-cyan-500 -> bg-blue-600, shadow-cyan-500/50 -> shadow-blue-600/50 -->
+                                    <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/50 border border-blue-400">
+                                        <ion-icon name="checkmark" class="text-white text-sm"></ion-icon>
+                                    </div>
+                                    <!-- 修正: border-cyan-400 -> border-blue-300 -->
+                                    <span>作業時間<span class="font-bold text-white border-b-2 border-blue-300">最大95%短縮</span></span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <!-- 修正: bg-cyan-500 -> bg-blue-600, shadow-cyan-500/50 -> shadow-blue-600/50 -->
+                                    <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/50 border border-blue-400">
+                                        <ion-icon name="checkmark" class="text-white text-sm"></ion-icon>
+                                    </div>
+                                    <span>認識率<span class="font-bold text-white border-b-2 border-blue-300"> 98%以上</span><span class="text-xs ml-1 opacity-80">※環境によって異なる</span></span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <!-- 修正: bg-cyan-500 -> bg-blue-600, shadow-cyan-500/50 -> shadow-blue-600/50 -->
+                                    <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/50 border border-blue-400">
+                                        <ion-icon name="checkmark" class="text-white text-sm"></ion-icon>
+                                    </div>
+                                    <span>誰でも使える<span class="font-bold text-white border-b-2 border-blue-300">簡単操作</span></span>
+                                </li>
+                            </ul>
+                        </div>
+        
+                        <div class="mt-12">
+                            <!-- 修正: 色を青に戻し、グラデーションとリング（枠線）で強調 -->
+                            <!-- ring-4 -> ring-8 に変更して枠線を太くしました -->
+                            <a href="#contact" class="inline-block bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xl font-bold py-4 px-12 rounded-full transition duration-300 shadow-xl shadow-blue-900/50 transform hover:scale-105 ring-8 ring-blue-400/30 border border-white/20 btn-shimmer">
+                                今すぐデモを利用する &rarr;
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="w-full md:w-1/2 flex justify-center fade-up delay-300 scale-90 md:scale-100">
+                        <div class="relative mx-auto border-gray-900 bg-gray-900 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-2xl ring-2 ring-gray-700">
+                            <div class="h-[32px] w-[3px] bg-gray-800 absolute -left-[17px] top-[72px] rounded-l-lg"></div>
+                            <div class="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[124px] rounded-l-lg"></div>
+                            <div class="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[178px] rounded-l-lg"></div>
+                            <div class="h-[64px] w-[3px] bg-gray-800 absolute -right-[17px] top-[142px] rounded-r-lg"></div>
+                            
+                            <div class="rounded-[2rem] overflow-hidden w-full h-full bg-white relative group" id="hero-carousel-container">
+                                <!-- 修正: pb-24 -> pb-20 に変更し、余白を狭くする -->
+                                <div class="slide absolute inset-0 flex flex-col items-center justify-center pt-4 px-4 pb-20 transition-opacity duration-500 opacity-100 z-10 bg-white" data-index="0">
+                                    <div class="relative w-full flex-1 min-h-0 mb-2 flex items-center justify-center">
+                                        <div class="absolute top-4 left-4 bg-blue-700 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md z-20">STEP 1</div>
+                                        <!-- 画像差し替え -->
+                                        <img src="https://i.imgur.com/PTn39RB.png" alt="操作手順1" class="max-w-full max-h-[400px] object-contain rounded shadow-sm">
+                                    </div>
+                                    <!-- 修正: テキスト枠の高さを固定 (h-14) し、文字数による位置ズレを防止 -->
+                                    <div class="h-14 w-full flex items-start justify-center">
+                                        <p class="text-sm text-gray-800 font-bold text-center px-2 leading-tight">アプリを起動し<br>カメラボタンをクリック</p>
+                                    </div>
+                                </div>
+
+                                <!-- 追加: 新しいSTEP2 -->
+                                <div class="slide absolute inset-0 flex flex-col items-center justify-center pt-4 px-4 pb-20 transition-opacity duration-500 opacity-0 z-0 bg-white" data-index="1">
+                                    <div class="relative w-full flex-1 min-h-0 mb-2 flex items-center justify-center">
+                                        <div class="absolute top-4 left-4 bg-blue-700 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md z-20">STEP 2</div>
+                                        <img src="https://i.imgur.com/bbi5VV7.png" alt="操作手順2" class="max-w-full max-h-[400px] object-contain rounded shadow-sm">
+                                    </div>
+                                    <!-- テキスト枠の高さを固定 -->
+                                    <div class="h-14 w-full flex items-start justify-center">
+                                        <!-- 修正: 写真を撮って解析 -> 撮影前の設定 (元に戻す) -->
+                                        <p class="text-sm text-gray-800 font-bold text-center px-2 leading-tight">撮影前の設定</p>
+                                    </div>
+                                </div>
+
+                                <!-- 修正: 旧STEP1(index1) -> STEP3(index2) に変更 -->
+                                <div class="slide absolute inset-0 flex flex-col items-center justify-center pt-4 px-4 pb-20 transition-opacity duration-500 opacity-0 z-0 bg-white" data-index="2">
+                                    <div class="relative w-full flex-1 min-h-0 mb-2 flex items-center justify-center">
+                                        <div class="absolute top-4 left-4 bg-blue-700 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md z-20">STEP 3</div>
+                                        <!-- 画像差し替え -->
+                                        <img src="https://i.imgur.com/njddBaS.png" alt="操作手順3" class="max-w-full max-h-[400px] object-contain rounded shadow-sm">
+                                    </div>
+                                    <!-- 修正: テキスト枠の高さを固定 -->
+                                    <div class="h-14 w-full flex items-start justify-center">
+                                        <!-- 修正: 写真を撮って送信 -> 写真を撮って解析 -->
+                                        <p class="text-sm text-gray-800 font-bold text-center px-2 leading-tight">写真を撮って解析</p>
+                                    </div>
+                                </div>
+
+                                <!-- 修正: 旧STEP2(index2) -> STEP4(index3) に変更 -->
+                                <div class="slide absolute inset-0 flex flex-col items-center justify-center pt-4 px-4 pb-20 transition-opacity duration-500 opacity-0 z-0 bg-white" data-index="3">
+                                    <div class="relative w-full flex-1 min-h-0 mb-2 flex items-center justify-center">
+                                        <div class="absolute top-4 left-4 bg-blue-700 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md z-20">STEP 4</div>
+                                        <!-- 画像差し替え -->
+                                        <img src="https://i.imgur.com/FTB8BPn.png" alt="操作手順4" class="max-w-full max-h-[400px] object-contain rounded shadow-sm">
+                                    </div>
+                                    <!-- 修正: テキスト枠の高さを固定 -->
+                                    <div class="h-14 w-full flex items-start justify-center">
+                                        <!-- 修正: 句点「。」を削除 -->
+                                        <p class="text-sm text-gray-800 font-bold text-center px-2 leading-tight">AIが自動で解析<br>範囲の指定をすることも可能</p>
+                                    </div>
+                                </div>
+
+                                <!-- 修正: 旧STEP3(index3) -> STEP5(index4) に変更 -->
+                                <div class="slide absolute inset-0 flex flex-col items-center justify-center pt-4 px-4 pb-20 transition-opacity duration-500 opacity-0 z-0 bg-white" data-index="4">
+                                    <div class="relative w-full flex-1 min-h-0 mb-2 flex items-center justify-center">
+                                        <div class="absolute top-4 left-4 bg-blue-700 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md z-20">STEP 5</div>
+                                        <!-- 画像差し替え -->
+                                        <img src="https://i.imgur.com/Drhbg37.png" alt="操作手順5" class="max-w-full max-h-[400px] object-contain rounded shadow-sm">
+                                    </div>
+                                    <!-- 修正: テキスト枠の高さを固定 -->
+                                    <div class="h-14 w-full flex items-start justify-center overflow-hidden">
+                                        <!-- 修正: 文言を変更（2行表示） -->
+                                        <p class="text-xs text-gray-800 font-bold text-center px-2 leading-tight">解析結果を表示<br>「カウント完了・結果送信」にて、管理コンソールにアップロード</p>
+                                    </div>
+                                </div>
+
+                                <!-- インジケーター位置 -->
+                                <div class="absolute bottom-8 left-0 right-0 flex justify-center gap-2 carousel-indicators z-30"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-24 bg-slate-50 bg-pattern-dots">
+            <div class="container mx-auto px-6">
+                <!-- 修正: 「まだ続けますか？」をひとまとまりにして改行崩れを防止 -->
+                <h2 class="section-heading fade-up">そのカウント作業、<span class="inline-block">まだ続けますか？</span></h2>
+                
+                <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mt-12">
+                    <div class="bg-white p-8 rounded-xl shadow-xl border-t-4 border-red-500 text-center fade-up delay-100 transform transition hover:-translate-y-2 duration-300">
+                        <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <ion-icon name="hourglass-outline" class="text-4xl text-red-500"></ion-icon>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">時間がかかりすぎる</h3>
+                    </div>
+                    <div class="bg-white p-8 rounded-xl shadow-xl border-t-4 border-red-500 text-center fade-up delay-200 transform transition hover:-translate-y-2 duration-300">
+                        <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <ion-icon name="alert-circle-outline" class="text-4xl text-red-500"></ion-icon>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">数え間違いが多い</h3>
+                    </div>
+                    <div class="bg-white p-8 rounded-xl shadow-xl border-t-4 border-red-500 text-center fade-up delay-300 transform transition hover:-translate-y-2 duration-300">
+                         <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <ion-icon name="body-outline" class="text-4xl text-red-500"></ion-icon>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">作業者の負担が大きい</h3>
+                    </div>
+                </div>
+                <div class="mt-20 text-center fade-up">
+                    <p class="text-2xl md:text-3xl font-extrabold text-slate-700">
+                        <!-- 修正: 「すべて解決し」をひとまとまりにして不自然な改行を防止 -->
+                        AIパイプカウンターは、これらの課題を<span class="inline-block">すべて解決し、</span><br>
+                        <span class="text-highlight px-2">もう、手作業の限界に挑む必要はありません。</span>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="use-cases" class="py-24 bg-white">
+            <div class="container mx-auto px-6 text-center">
+                <!-- 修正: 「劇的に効率化！」をひとまとまりにして改行崩れを防止 -->
+                <h2 class="section-heading fade-up">出荷・受入・棚卸しを<span class="inline-block">劇的に効率化！</span></h2>
+                <p class="max-w-2xl mx-auto mb-12 text-gray-600 fade-up text-left md:text-center">
+                    棚卸しや入出荷時の検品作業など、あらゆるカウント業務をAIがサポート。<br class="hidden md:inline">
+                    作業時間を大幅に短縮し、ミスを撲滅します。
+                </p>
+                
+                <div class="grid md:grid-cols-2 gap-8 items-stretch fade-up max-w-5xl mx-auto">
+                    <div class="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-200 shadow-inner relative">
+                        <h3 class="text-xl font-bold mb-8 text-slate-600 flex items-center justify-center gap-3">
+                            <span class="bg-slate-400 text-white px-3 py-1 text-sm rounded-full">Before</span> 
+                            従来の手作業フロー
+                        </h3>
+                        <div class="flex flex-col gap-4 relative max-w-sm mx-auto">
+                            <div class="flex items-center gap-4 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 text-2xl">
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-bold text-slate-700">目視でカウント</p>
+                                    <p class="text-xs text-slate-500">寒い倉庫で長時間作業...</p>
+                                </div>
+                            </div>
+                            <ion-icon name="arrow-down" class="text-slate-300 text-2xl mx-auto"></ion-icon>
+                            
+                            <div class="flex items-center gap-4 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 text-2xl">
+                                    <ion-icon name="create-outline"></ion-icon>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-bold text-slate-700">紙にメモする</p>
+                                    <p class="text-xs text-slate-500">書き間違いのリスクも</p>
+                                </div>
+                            </div>
+                            <ion-icon name="arrow-down" class="text-slate-300 text-2xl mx-auto"></ion-icon>
+
+                            <div class="flex items-center gap-4 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 text-2xl">
+                                    <ion-icon name="desktop-outline"></ion-icon>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-bold text-slate-700">事務所でPC入力</p>
+                                    <p class="text-xs text-slate-500">移動時間も無駄に...</p>
+                                </div>
+                            </div>
+                            <ion-icon name="arrow-down" class="text-red-300 text-2xl mx-auto animate-bounce"></ion-icon>
+
+                            <div class="flex items-center gap-4 p-4 bg-red-50 rounded-xl shadow-md border border-red-100">
+                                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-500 text-3xl">
+                                    <ion-icon name="alert-circle"></ion-icon>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-bold text-red-600">ミス発覚・再確認</p>
+                                    <p class="text-xs text-red-400">また現場に戻ることに...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 p-6 md:p-8 rounded-2xl border-2 border-blue-500 shadow-xl relative overflow-hidden flex flex-col">
+                        <div class="absolute top-0 right-0 bg-blue-500 text-white text-sm font-bold px-4 py-1 rounded-bl-xl shadow-sm">After</div>
+                        <h3 class="text-xl font-bold mb-8 text-blue-900 flex items-center justify-center gap-3">
+                            <span class="bg-blue-600 text-white px-3 py-1 text-sm rounded-full">AI導入</span> 
+                            圧倒的スピード
+                        </h3>
+                        
+                        <div class="flex flex-col justify-between h-full gap-4 py-2 max-w-sm mx-auto w-full">
+                             <div class="flex items-center gap-4 p-5 bg-white rounded-xl shadow-md border-l-4 border-blue-500 transform hover:scale-105 transition duration-300">
+                                <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 text-3xl">
+                                    <ion-icon name="camera"></ion-icon>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-bold text-xl text-gray-800">スマホで撮影</p>
+                                    <p class="text-sm text-gray-500">現場作業はこれだけ！</p>
+                                </div>
+                            </div>
+
+                            <div class="flex-grow flex items-center justify-center relative py-2">
+                                 <div class="absolute inset-x-0 h-full flex flex-col items-center justify-center">
+                                    <div class="h-full w-1 bg-blue-200 rounded-full"></div>
+                                 </div>
+                                 <div class="bg-white px-6 py-2 rounded-full border border-blue-200 text-blue-600 text-sm font-bold relative z-10 shadow-sm flex items-center gap-2">
+                                    <ion-icon name="cloud-upload-outline"></ion-icon>
+                                    自動クラウド連携 & 解析
+                                 </div>
+                            </div>
+
+                             <div class="flex items-center gap-4 p-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg text-white transform hover:scale-105 transition duration-300">
+                                <div class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white backdrop-blur-sm text-4xl">
+                                    <ion-icon name="checkmark-done-circle"></ion-icon>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-bold text-2xl">すべて完了！</p>
+                                    <p class="text-sm text-blue-100 opacity-90">カウント・入力・共有まで終了</p>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 text-center bg-blue-100/50 py-2 rounded-lg">
+                                <p class="text-blue-800 font-bold flex items-center justify-center gap-2">
+                                    <ion-icon name="time" class="text-xl"></ion-icon>
+                                    <!-- 修正: 作業時間を80%削減 -> 作業時間を最大95%削減 -->
+                                    作業時間を最大95%削減
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="max-w-4xl mx-auto mt-12 text-left leading-relaxed fade-up bg-white p-8 rounded-xl shadow-sm border border-slate-100">
+                    <!-- 修正: 作業時間は約80%削減され -> 作業時間は最大95%削減され -->
+                    <p>従来、手間と時間がかかっていたパイプのカウント作業を、AIを活用することで大幅に効率化できるようになりました。AIパイプカウンターの導入により、<span class="text-highlight">作業時間は最大95%削減され</span>、人為的なミスや作業者の負担を大幅に軽減することが可能です。</p>
+                    <p class="mt-4">AIは、貴社の倉庫環境に合わせた画像認識モデルを形成し、継続的な精度を向上に努めます。また、リアルタイムで正確な在庫情報を把握する為に、在庫管理システムとの連携も可能です。AIと人間の協働により、<span class="text-highlight">出荷、入荷、棚卸し</span>といったカウント業務のさらなる効率化と高度化が期待できます。</p>
+                </div>
+                <div class="info-box mt-8 max-w-4xl mx-auto text-left fade-up text-blue-900 bg-blue-50 p-4 rounded-lg flex items-start gap-4">
+                     <ion-icon name="thumbs-up-sharp" class="text-2xl flex-shrink-0 text-blue-600"></ion-icon>
+                    <p>導入企業様からは、作業効率の向上だけでなく、従業員の労働環境改善にも大きく貢献したとの声を多数いただいています。</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-24 bg-slate-50 bg-pattern-dots">
+            <div class="container mx-auto px-6">
+                <h2 class="section-heading fade-up">なぜAIパイプカウンターが選ばれるのか？</h2>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg fade-up delay-100 hover:shadow-2xl transition duration-300 flex flex-col">
+                        <div class="relative mb-4">
+                            <span class="absolute top-2 left-2 bg-blue-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-md">1</span>
+                            <img src="https://i.imgur.com/lP5eXvu.jpeg" alt="笑顔でスマホを操作する作業員" class="rounded-lg w-full h-48 object-cover">
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 text-blue-900">現場発の使いやすい設計</h3>
+                        <p class="text-sm text-gray-600 flex-grow">
+                            長年、現場で課題とされてきたカウント作業。その苦労を知る「パイプ屋」が発案・企画したからこそ、直感的で誰でも迷わず使える操作性を実現しました。
+                        </p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg fade-up delay-200 hover:shadow-2xl transition duration-300 flex flex-col">
+                         <div class="relative mb-4">
+                            <span class="absolute top-2 left-2 bg-blue-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-md">2</span>
+                            <img src="https://i.imgur.com/tRxJ5xd.png" alt="現場で確認作業をする作業員" class="rounded-lg w-full h-48 object-cover">
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 text-blue-900">検品・証拠ツールとしての信頼性</h3>
+                        <p class="text-sm text-gray-600 flex-grow">単なるカウントだけでなく、管理画面で『いつ・誰が・何を』撮ったか画像付きで履歴管理が可能。誤出荷防止やクレーム時のエビデンスとして機能します。<span class="font-bold text-blue-800">メモなどのタグ情報も画像とセットで保存されるため、取り違えミスも防げます。</span></p>
+                    </div>
+                     <div class="bg-white p-6 rounded-xl shadow-lg fade-up delay-300 hover:shadow-2xl transition duration-300 flex flex-col">
+                         <div class="relative mb-4">
+                            <span class="absolute top-2 left-2 bg-blue-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-md">3</span>
+                            <img src="https://i.imgur.com/dqpejhb.jpeg" alt="パイプを持つAIロボット" class="rounded-lg w-full h-48 object-cover">
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 text-blue-900">高い精度と信頼性</h3>
+                        <p class="text-sm text-gray-600 flex-grow">当社では、人間とAIが協働する独自の学習モデルを採用しています。経験豊富な専門家が、高品質なデータのみをAIに学習させることで、従来のAIモデルを凌駕する精度を実現しました。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 新しい比較セクション -->
+        <section class="py-24 bg-white border-t border-slate-100">
+            <div class="container mx-auto px-6">
+                <h2 class="section-heading fade-up">一般的なアプリとの決定的な違い</h2>
+                
+                <p class="max-w-3xl mx-auto text-center text-gray-600 mb-12 fade-up delay-100 leading-relaxed">
+                    AIパイプカウンターは、現場での経験や課題を元に開発され、継続的な改善を重ねることで、<br class="hidden md:block">実務的な使いやすさを実現しています。
+                </p>
+
+                <div class="max-w-4xl mx-auto mt-4 fade-up delay-200">
+                    <div class="overflow-x-auto rounded-xl shadow-xl border border-slate-200">
+                        <table class="w-full text-sm text-left border-collapse min-w-[600px]">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200">
+                                    <th class="px-6 py-5 text-center w-1/4 font-bold text-slate-700">比較項目</th>
+                                    <th class="px-6 py-5 text-center w-1/3 font-bold text-slate-500">一般的なカウントアプリ</th>
+                                    <th class="px-6 py-5 text-center w-5/12 font-bold text-blue-700 bg-blue-50/50 border-b-4 border-blue-500 text-lg">AIパイプカウンター</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 bg-white">
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <th class="px-6 py-5 bg-slate-50/50 font-bold text-center text-xs text-gray-500">設計思想</th>
+                                    <td class="px-6 py-5 text-center text-gray-600">汎用的<br><span class="text-xs opacity-75">（現場ニーズに不適合）</span></td>
+                                    <td class="px-6 py-5 text-center font-bold text-blue-900 bg-blue-50/20 text-base">現場発の視点<br><span class="text-xs text-blue-600">（使いやすさを追求）</span></td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <th class="px-6 py-5 bg-slate-50/50 font-bold text-center text-xs text-gray-500">操作性</th>
+                                    <td class="px-6 py-5 text-center text-gray-600">開発者視点<br><span class="text-xs opacity-75">（理解格差がある）</span></td>
+                                    <td class="px-6 py-5 text-center font-bold text-blue-900 bg-blue-50/20 text-base">直感的<br><span class="text-xs text-blue-600">（誰でも使える）</span></td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <th class="px-6 py-5 bg-slate-50/50 font-bold text-center text-xs text-gray-500">拡張性</th>
+                                    <td class="px-6 py-5 text-center text-gray-600">カスタマイズ不可</td>
+                                    <td class="px-6 py-5 text-center font-bold text-blue-900 bg-blue-50/20 text-base">他システム連携可能</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <th class="px-6 py-5 bg-slate-50/50 font-bold text-center text-xs text-gray-500">導入</th>
+                                    <td class="px-6 py-5 text-center text-gray-600">インストールが必要</td>
+                                    <td class="px-6 py-5 text-center font-bold text-blue-900 bg-blue-50/20 text-base">インストール不要</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <th class="px-6 py-5 bg-slate-50/50 font-bold text-center text-xs text-gray-500">技術</th>
+                                    <!-- 修正: "一般的なライブラリのみ" が改行されないように whitespace-nowrap を追加 -->
+                                    <td class="px-6 py-5 text-center text-gray-600 whitespace-nowrap">一般的なライブラリのみ</td>
+                                    <td class="px-6 py-5 text-center font-bold text-blue-900 bg-blue-50/20 text-base">独自エンジン<br>＋強化学習</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-24 bg-white">
+            <div class="container mx-auto px-6">
+                <!-- 修正: 文末の「可視化。」「担保します。」をひとまとまりにして、1文字だけ改行されるのを防止 -->
+                <h2 class="section-heading fade-up">現場のデータをリアルタイムで<span class="inline-block">可視化。</span><br>管理画面で『安心』を<span class="inline-block">担保します。</span></h2>
+                
+                <div class="max-w-7xl mx-auto mt-16">
+                    <div class="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-12 lg:gap-16 xl:gap-24">
+                        
+                        <div class="flex flex-col items-center space-y-6 fade-up delay-100 flex-shrink-0">
+                            <div class="relative">
+                                <div class="w-[240px] h-[435px] bg-slate-900 rounded-[2.5rem] border-4 border-slate-800 shadow-xl overflow-hidden relative z-10" id="management-phone-carousel">
+                                    <!-- 追加: STEP1の画像 -->
+                                    <div class="slide absolute inset-0 transition-opacity duration-500 opacity-100 z-10">
+                                        <img src="https://i.imgur.com/PTn39RB.png" alt="アプリ起動" class="w-full h-full object-cover">
+                                    </div>
+                                    <!-- 修正: STEP2の画像 (初期状態を非表示に変更) -->
+                                    <div class="slide absolute inset-0 transition-opacity duration-500 opacity-0 z-0">
+                                        <img src="https://i.imgur.com/JegxTO0.png" alt="スマホでの撮影" class="w-full h-full object-cover">
+                                    </div>
+                                    <!-- 修正: STEP3の画像 -->
+                                    <div class="slide absolute inset-0 transition-opacity duration-500 opacity-0 z-0">
+                                        <img src="https://i.imgur.com/EAeWzps.png" alt="カウント結果" class="w-full h-full object-cover">
+                                    </div>
+                                    <!-- 追加: STEP4の画像 -->
+                                    <div class="slide absolute inset-0 transition-opacity duration-500 opacity-0 z-0">
+                                        <img src="https://i.imgur.com/FTB8BPn.png" alt="解析詳細" class="w-full h-full object-cover">
+                                    </div>
+                                    <!-- 追加: STEP5の画像 -->
+                                    <div class="slide absolute inset-0 transition-opacity duration-500 opacity-0 z-0">
+                                        <img src="https://i.imgur.com/Drhbg37.png" alt="データ送信" class="w-full h-full object-cover">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-center max-w-xs w-full">
+                                <div class="bg-slate-100 text-slate-600 px-4 py-1 rounded-full text-sm font-bold inline-block mb-3">モバイル</div>
+                                <h3 class="font-bold text-gray-800 text-lg mb-4">簡単操作でデータ化</h3>
+                                
+                                <div class="text-left bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm w-full min-h-[280px] flex flex-col justify-center">
+                                    <ul class="space-y-4 text-sm text-gray-600">
+                                        <li class="flex items-start gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-200 flex-shrink-0 text-blue-600">
+                                                <ion-icon name="camera"></ion-icon>
+                                            </div>
+                                            <span class="mt-1">アプリで撮影するだけ。<br>誰でもすぐに使えます。</span>
+                                        </li>
+                                        <li class="flex items-start gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-200 flex-shrink-0 text-blue-600">
+                                                <ion-icon name="pricetag"></ion-icon>
+                                            </div>
+                                            <span class="mt-1"><strong>現場メモやタグ情報</strong>も<br>その場で登録可能です。</span>
+                                        </li>
+                                        <li class="flex items-start gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-slate-200 flex-shrink-0 text-cyan-500">
+                                                <ion-icon name="cloud-upload"></ion-icon>
+                                            </div>
+                                            <span class="mt-1">自動で解析・クラウド送信。<br>手作業ゼロへ。</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-shrink-0 text-center px-4 fade-up delay-200 relative z-20 lg:mt-[162px]">
+                            <div class="w-28 h-28 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3 relative z-10 shadow-sm">
+                                <div class="absolute top-1/2 -translate-y-1/2 -left-12 lg:-left-16 xl:-left-20 text-blue-500 text-6xl hidden lg:block -z-10">
+                                    <ion-icon name="arrow-forward-outline"></ion-icon>
+                                </div>
+
+                                <ion-icon name="cloud-done-outline" class="text-6xl text-blue-500"></ion-icon>
+                                <div class="absolute -top-1 -right-1 w-8 h-8 bg-cyan-500 rounded-full border-4 border-white flex items-center justify-center shadow-sm">
+                                    <ion-icon name="checkmark" class="text-white text-sm font-bold"></ion-icon>
+                                </div>
+                            </div>
+                            <p class="font-bold text-blue-600 text-sm mt-2">即時クラウド同期</p>
+                        </div>
+
+                        <div class="w-full max-w-lg lg:max-w-none lg:w-[640px] fade-up delay-300 relative flex flex-col items-center">
+                            <div class="h-[435px] w-full flex flex-col items-center justify-start">
+                                <div class="relative w-full border-slate-800 bg-slate-800 border-[12px] rounded-t-xl shadow-2xl">
+                                    <div class="bg-white overflow-hidden rounded-sm relative aspect-w-16 aspect-h-9 cursor-pointer group" onclick="openImageModal('https://i.imgur.com/0IhptJm.png')">
+                                        <img src="https://i.imgur.com/0IhptJm.png" alt="AIパイプカウンター管理画面" class="object-contain object-center w-full h-full transform transition duration-700 hover:scale-[1.02]">
+                                        <div class="image-zoom-hint z-20">
+                                            <div class="bg-black/70 text-white px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-sm">
+                                                <ion-icon name="expand-outline" class="text-xl"></ion-icon>
+                                                <span class="text-sm font-bold">クリックで拡大</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="relative bg-slate-800 rounded-b-xl h-[24px] w-full"></div>
+                                <div class="relative bg-slate-700 h-[40px] w-[140px] rounded-b-lg shadow-md"></div>
+                            </div>
+                            
+                            <div class="text-center mt-6 w-full">
+                                <div class="bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-bold inline-block mb-3">PC</div>
+                                <h3 class="font-bold text-gray-800 text-lg mb-4">事務所でリアルタイム確認</h3>
+                                
+                                <div class="inline-block text-left max-w-lg mx-auto bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm w-full min-h-[280px] flex flex-col justify-center">
+                                    <p class="text-sm text-gray-700 mb-4 border-b border-gray-200 pb-3 flex items-start gap-2">
+                                        <ion-icon name="list" class="text-blue-500 text-lg flex-shrink-0 mt-0.5"></ion-icon>
+                                        <span><span class="font-bold text-gray-900">「誰が」「いつ」「何を」</span>撮ったか一覧表示。</span>
+                                    </p>
+                                    
+                                    <div class="mb-3">
+                                        <p class="text-sm font-bold text-blue-800 mb-1 flex items-center gap-2">
+                                            <ion-icon name="search" class="text-lg"></ion-icon>検索フィルター機能
+                                        </p>
+                                        <p class="text-sm text-gray-600 pl-7">必要なデータを瞬時に絞り込み可能です。</p>
+                                    </div>
+
+                                    <div class="bg-white p-3 rounded-lg border border-slate-200 text-xs text-gray-600 ml-7">
+                                        <p class="font-bold mb-1 text-gray-500 border-b border-slate-100 pb-1 mb-1">検索対象データ例</p>
+                                        <ul class="list-disc list-inside space-y-1">
+                                            <li>撮影時に登録した<span class="font-bold text-blue-600">メモなどのタグ情報</span></li>
+                                            <li>作成日、撮影本数 など</li>
+                                        </ul>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-3 pl-7">
+                                        特定の案件や条件を即座に呼び出し、照合できます。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="effects" class="py-24 bg-slate-50">
+            <div class="container mx-auto px-6">
+                <div class="max-w-5xl mx-auto">
+                     <div class="relative w-full h-48 rounded-2xl shadow-lg overflow-hidden mb-12 flex items-center justify-center text-center fade-up bg-gradient-to-r from-blue-800 to-indigo-700">
+                        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')] opacity-30"></div>
+                        <h2 class="relative z-10 text-4xl font-bold tracking-tight text-white">AIパイプカウンターの導入効果</h2>
+                    </div>
+                     <!-- 修正: 作業時間を90%程度削減 -> 作業時間を最大95%削減 -->
+                     <p class="mb-8 text-gray-600 fade-up text-center text-lg">AIパイプカウンターの導入により、<span class="font-bold text-blue-700">作業時間を最大95%削減</span>することが可能です。</p>
+
+                    <div class="grid md:grid-cols-2 gap-8 fade-up">
+                         <div class="bg-white p-8 rounded-xl border border-gray-200 flex flex-col justify-between">
+                            <div>
+                                <h3 class="text-xl font-bold mb-4 border-b pb-2 text-gray-700">試算条件</h3>
+                                <!-- 修正: 改行してもきれいに見えるよう list-outside に変更し、左余白(ml-5)を追加 -->
+                                <!-- 修正: 行間を少し広げて(space-y-2 -> space-y-3)読みやすく調整 -->
+                                <ul class="list-disc list-outside ml-5 text-gray-600 mb-6 space-y-3">
+                                    <!-- 修正: ラベル部分(span)に inline-block w-[9em] を指定して幅を固定し、コロン位置を統一 -->
+                                    <li>
+                                        <span class="inline-block w-[9em]">従業員年間コスト</span>：<span class="font-bold">500万円</span>
+                                    </li>
+                                    
+                                    <li>
+                                        <span class="inline-block w-[9em]">1回のカウント時間</span>：<span class="font-bold">200秒</span><br>
+                                        <span class="text-sm text-gray-500">（手作業）</span>
+                                    </li>
+                                    
+                                    <li>
+                                        <!-- 修正: "10秒" に whitespace-nowrap を追加して、数字と単位の泣き別れを防止 -->
+                                        <span class="inline-block w-[9em]">1回のカウント時間</span>：<span class="font-bold text-blue-600 whitespace-nowrap">10秒</span><br>
+                                        <span class="text-sm text-gray-500">（AIパイプカウンター）</span>
+                                    </li>
+                                    
+                                    <li>
+                                        <span class="inline-block w-[9em]">平均カウント本数</span>：<span class="font-bold">200本/回</span>
+                                    </li>
+                                    <li>
+                                        <span class="inline-block w-[9em]">月間カウント回数</span>：<span class="font-bold">1,000回</span>
+                                    </li>
+                                </ul>
+                                
+                                <h3 class="text-xl font-bold mb-4 border-b pb-2 text-gray-700">試算結果</h3>
+                                <div class="bg-slate-50 rounded-lg shadow-sm overflow-hidden border">
+                                    <table class="w-full text-left border-collapse text-sm">
+                                        <tbody class="divide-y divide-slate-100">
+                                            <tr class="bg-white"><td class="p-3 font-bold text-gray-600">現在の作業時間</td><td class="p-3 text-right">666.7時間/年</td></tr>
+                                            <tr><td class="p-3 font-bold text-blue-700">AI導入後</td><td class="p-3 text-right font-bold text-blue-700">33.3時間/年</td></tr>
+                                            <tr class="bg-yellow-50"><td class="p-3 font-bold text-yellow-800">削減率</td><td class="p-3 text-right font-bold text-yellow-600 text-lg">95.0%</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="mt-6 text-sm text-gray-600">削減された時間を金額に換算すると、<span class="text-highlight px-1">年間約150万円のコスト削減</span>が見込めます。</p>
+                            </div>
+                         </div>
+
+                        <div id="roi-calculator" class="bg-white p-8 rounded-xl shadow-xl border border-blue-100 relative overflow-hidden">
+                             <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg font-bold">Simulation</div>
+                            <h3 class="text-2xl font-bold mb-2 text-center text-gray-800 flex items-center justify-center gap-2">
+                                <!-- 修正: 導入効果シミュレーション -> コスト削減シミュレーション -->
+                                <ion-icon name="calculator-outline"></ion-icon>コスト削減シミュレーション
+                            </h3>
+                            <!-- こちらの説明文も整合性を取るため "AI" を削除しました -->
+                            <p class="text-center text-xs text-gray-500 mb-6">あなたの会社の数値を入力して分析</p>
+                            <form id="roi-form" class="space-y-4">
+                                <div>
+                                    <label for="current-time" class="block text-xs font-bold text-gray-700 uppercase tracking-wide">1回のカウント時間（秒）</label>
+                                    <input type="number" id="current-time" class="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="例: 180" required>
+                                </div>
+                                <div>
+                                    <label for="monthly-counts" class="block text-xs font-bold text-gray-700 uppercase tracking-wide">月間カウント回数</label>
+                                    <input type="number" id="monthly-counts" class="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="例: 500" required>
+                                </div>
+                                <div>
+                                    <label for="hourly-wage" class="block text-xs font-bold text-gray-700 uppercase tracking-wide">従業員の平均時給（円）</label>
+                                    <input type="number" id="hourly-wage" class="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="例: 2500" required>
+                                </div>
+                                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:opacity-90 transition-opacity shadow-md transform hover:scale-[1.02]">
+                                    分析を開始
+                                </button>
+                            </form>
+                            <div id="roi-result-container" class="mt-6 hidden border-t pt-4">
+                                <!-- "AIによる" を削除 -->
+                                <h4 class="font-bold text-sm mb-2 text-blue-800">分析結果:</h4>
+                                <!-- 修正: whitespace-pre-wrap を削除して、ローディング表示の中央揃えズレ（インデントによる余白）を解消 -->
+                                <div id="roi-result" class="bg-slate-50 p-1 rounded-lg border border-slate-100 text-gray-700 text-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="benefits" class="py-24 bg-white relative overflow-hidden">
+            <div class="container mx-auto px-6">
+                <div class="relative w-full overflow-hidden mb-16 flex items-center justify-center text-center fade-up">
+                    <h2 class="relative z-10 text-4xl font-bold tracking-tight text-blue-900">導入メリット</h2>
+                </div>
+                
+                <div class="max-w-6xl mx-auto fade-up delay-100">
+                    <div class="grid md:grid-cols-3 gap-8">
+                        <div class="bg-white p-6 rounded-xl shadow-xl border border-slate-100 flex flex-col hover:shadow-2xl transition duration-300 group">
+                            <div class="flex justify-center items-center gap-6 mb-6 border-b border-slate-100 pb-6">
+                                <div class="text-center">
+                                    <div class="w-20 h-20 rounded-full border-4 border-red-500 overflow-hidden mb-2 mx-auto group-hover:scale-110 transition duration-300 shadow-md">
+                                        <img src="https://i.imgur.com/gkoZrvJ.jpeg" alt="導入前: 困っている様子" class="w-full h-full object-cover grayscale">
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-500">Before</span>
+                                </div>
+                                <ion-icon name="caret-forward" class="text-slate-300 text-2xl"></ion-icon>
+                                <div class="text-center">
+                                    <div class="w-20 h-20 rounded-full border-4 border-blue-500 overflow-hidden mb-2 mx-auto group-hover:scale-110 transition duration-300 shadow-md">
+                                        <img src="https://i.imgur.com/qC8mGij.jpeg" alt="導入後: 信頼関係" class="w-full h-full object-cover">
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-500">After</span>
+                                </div>
+                            </div>
+                            <h4 class="text-xl font-bold text-blue-900 mb-6 leading-snug">「言った言わない」の泥沼から解放。信頼と時間を守る。</h4>
+                            <div class="space-y-6 flex-grow">
+                                <div class="bg-red-50 p-4 rounded-lg border-l-4 border-red-500">
+                                    <span class="text-xs font-bold text-white bg-red-500 px-2 py-1 rounded mb-2 inline-block">Before</span>
+                                    <p class="text-sm text-gray-700 leading-relaxed">納品後に突然入る「数が合わない」というクレーム。確かな証拠がない水掛け論は、精神を疲弊させ、顧客との信頼関係すら揺るがします。</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                    <span class="text-xs font-bold text-white bg-blue-500 px-2 py-1 rounded mb-2 inline-block">After</span>
+                                    <p class="text-sm text-gray-700 leading-relaxed">AIがカウントした瞬間の画像が、動かぬ【画像エビデンス】として管理コンソールに残ります。当然、過去の物であっても検索して確認する事が可能です。これが強力な防御策となり、トラブルを回避し、信頼関係を築く武器となります。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl shadow-xl border border-slate-100 flex flex-col hover:shadow-2xl transition duration-300 group">
+                            <div class="flex justify-center items-center gap-6 mb-6 border-b border-slate-100 pb-6">
+                                <div class="text-center">
+                                    <div class="w-20 h-20 rounded-full border-4 border-red-500 overflow-hidden mb-2 mx-auto group-hover:scale-110 transition duration-300 shadow-md">
+                                        <img src="https://i.imgur.com/gssB1f5.jpeg" alt="導入前: 山積みの在庫" class="w-full h-full object-cover grayscale">
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-500">Before</span>
+                                </div>
+                                <ion-icon name="caret-forward" class="text-slate-300 text-2xl"></ion-icon>
+                                <div class="text-center">
+                                    <div class="w-20 h-20 rounded-full border-4 border-blue-500 overflow-hidden mb-2 mx-auto group-hover:scale-110 transition duration-300 shadow-md">
+                                        <img src="https://i.imgur.com/yMHma1J.jpeg" alt="導入後: 正確なチェック" class="w-full h-full object-cover">
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-500">After</span>
+                                </div>
+                            </div>
+                            <h4 class="text-xl font-bold text-blue-900 mb-6 leading-snug">たった一つのミスが招く「莫大なムダ」をゼロに。</h4>
+                            <div class="space-y-6 flex-grow">
+                                <div class="bg-red-50 p-4 rounded-lg border-l-4 border-red-500">
+                                    <span class="text-xs font-bold text-white bg-red-500 px-2 py-1 rounded mb-2 inline-block">Before</span>
+                                    <p class="text-sm text-gray-700 leading-relaxed">人間ゆえのうっかりミスが欠品や納品ミスにつながった時、その代償は甚大です。特に特注品の再製作費用や納期遅延は、利益を直接圧迫します。</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                    <span class="text-xs font-bold text-white bg-blue-500 px-2 py-1 rounded mb-2 inline-block">After</span>
+                                    <p class="text-sm text-gray-700 leading-relaxed">AIによる高精度なチェックがヒューマンエラーを排除。出荷前の完璧な確認で、数え間違いによる【特注品作り直しのムダ】を最小限に抑えます。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl shadow-xl border border-slate-100 flex flex-col hover:shadow-2xl transition duration-300 group">
+                            <div class="flex justify-center items-center gap-6 mb-6 border-b border-slate-100 pb-6">
+                                <div class="text-center">
+                                    <div class="w-20 h-20 rounded-full border-4 border-red-500 overflow-hidden mb-2 mx-auto group-hover:scale-110 transition duration-300 shadow-md">
+                                        <img src="https://i.imgur.com/Qchwswo.jpeg" alt="導入前: 頭を抱える様子" class="w-full h-full object-cover grayscale">
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-500">Before</span>
+                                </div>
+                                <ion-icon name="caret-forward" class="text-slate-300 text-2xl"></ion-icon>
+                                <div class="text-center">
+                                    <div class="w-20 h-20 rounded-full border-4 border-blue-500 overflow-hidden mb-2 mx-auto group-hover:scale-110 transition duration-300 shadow-md">
+                                        <img src="https://i.imgur.com/cnzquJR.jpeg" alt="導入後: 笑顔でスマホ操作" class="w-full h-full object-cover">
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-500">After</span>
+                                </div>
+                            </div>
+                            <h4 class="text-xl font-bold text-blue-900 mb-6 leading-snug">「合っているか不安」という呪縛を解き、現場に笑顔を。</h4>
+                            <div class="space-y-6 flex-grow">
+                                <div class="bg-red-50 p-4 rounded-lg border-l-4 border-red-500">
+                                    <span class="text-xs font-bold text-white bg-red-500 px-2 py-1 rounded mb-2 inline-block">Before</span>
+                                    <p class="text-sm text-gray-700 leading-relaxed">出荷の瞬間まで拭いきれない「本当に合っているだろうか？」という慢性的なプレッシャー。これは従業員の心身を蝕み、モチベーション低下の原因になります。</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                    <span class="text-xs font-bold text-white bg-blue-500 px-2 py-1 rounded mb-2 inline-block">After</span>
+                                    <p class="text-sm text-gray-700 leading-relaxed">スマホをかざすだけでAIが正確な答えを出す安心感が、現場の空気を変えます。ストレスフリーな環境は【従業員の満足度向上】に直結します。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="how-to-use" class="py-24 bg-slate-50 bg-pattern-dots text-center">
+            <div class="container mx-auto px-6">
+                <div class="relative w-full overflow-hidden mb-6 flex items-center justify-center text-center fade-up">
+                    <h2 class="relative z-10 text-4xl font-bold tracking-tight text-gray-800">基本操作</h2>
+                </div>
+
+                <div class="relative max-w-4xl mx-auto fade-up delay-100 group" id="carousel-container">
+                    
+                    <div class="relative overflow-hidden bg-white rounded-2xl shadow-2xl border border-slate-100 min-h-[650px] sm:min-h-[700px]">
+                        <div class="slide absolute inset-0 flex flex-col items-center justify-start pt-12 sm:pt-20 px-4 transition-opacity duration-500 opacity-100 z-10 bg-white" data-index="0">
+                            <div class="relative w-full h-[350px] sm:h-[450px] mb-6 bg-slate-50 rounded-xl border flex items-center justify-center">
+                                <div class="absolute top-4 left-4 bg-blue-700 text-white px-4 py-2 rounded-full font-bold shadow-md z-20">STEP 1</div>
+                                <!-- 画像差し替え -->
+                                <img src="https://i.imgur.com/PTn39RB.png" alt="操作手順1" class="w-full h-full object-contain mx-auto rounded-lg">
+                            </div>
+                            <!-- 修正: テキストエリアの高さを固定 (h-20) して、下部余白のバラつきとガタつきを防止 -->
+                            <div class="h-20 w-full flex items-start justify-center">
+                                <!-- 修正: 句点「。」を削除 -->
+                                <p class="text-lg text-gray-700 font-medium">アプリを起動し、画面右上のカメラボタン（緑）をクリック</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 追加: 新しいSTEP2 -->
+                        <div class="slide absolute inset-0 flex flex-col items-center justify-start pt-12 sm:pt-20 px-4 transition-opacity duration-500 opacity-0 z-0 bg-white" data-index="1">
+                             <div class="relative w-full h-[350px] sm:h-[450px] mb-6 bg-slate-50 rounded-xl border flex items-center justify-center">
+                                <div class="absolute top-4 left-4 bg-blue-700 text-white px-4 py-2 rounded-full font-bold shadow-md z-20">STEP 2</div>
+                                <img src="https://i.imgur.com/bbi5VV7.png" alt="操作手順2" class="w-full h-full object-contain mx-auto rounded-lg">
+                            </div>
+                            <!-- テキストエリアの高さを固定 -->
+                            <div class="h-20 w-full flex items-start justify-center">
+                                <!-- 修正: 写真を撮って解析 -> 撮影前の設定 (元に戻す) -->
+                                <p class="text-lg text-gray-700 font-medium">撮影前の設定</p>
+                            </div>
+                        </div>
+
+                        <!-- 修正: 旧STEP1 -> STEP3 (index2) -->
+                        <div class="slide absolute inset-0 flex flex-col items-center justify-start pt-12 sm:pt-20 px-4 transition-opacity duration-500 opacity-0 z-0 bg-white" data-index="2">
+                             <div class="relative w-full h-[350px] sm:h-[450px] mb-6 bg-slate-50 rounded-xl border flex items-center justify-center">
+                                <div class="absolute top-4 left-4 bg-blue-700 text-white px-4 py-2 rounded-full font-bold shadow-md z-20">STEP 3</div>
+                                <!-- 画像差し替え -->
+                                <img src="https://i.imgur.com/njddBaS.png" alt="操作手順3" class="w-full h-full object-contain mx-auto rounded-lg">
+                            </div>
+                            <!-- 修正: テキストエリアの高さを固定 -->
+                            <div class="h-20 w-full flex items-start justify-center">
+                                <!-- 修正: 写真を撮って送信... -> 写真を撮って解析 -->
+                                <p class="text-lg text-gray-700 font-medium">写真を撮って解析</p>
+                            </div>
+                        </div>
+
+                        <!-- 修正: 旧STEP2 -> STEP4 (index3) -->
+                        <div class="slide absolute inset-0 flex flex-col items-center justify-start pt-12 sm:pt-20 px-4 transition-opacity duration-500 opacity-0 z-0 bg-white" data-index="3">
+                             <div class="relative w-full h-[350px] sm:h-[450px] mb-6 bg-slate-50 rounded-xl border flex items-center justify-center">
+                                <div class="absolute top-4 left-4 bg-blue-700 text-white px-4 py-2 rounded-full font-bold shadow-md z-20">STEP 4</div>
+                                <!-- 画像差し替え -->
+                                <img src="https://i.imgur.com/FTB8BPn.png" alt="操作手順4" class="w-full h-full object-contain mx-auto rounded-lg">
+                            </div>
+                            <!-- 修正: テキストエリアの高さを固定 -->
+                            <div class="h-20 w-full flex items-start justify-center">
+                                <!-- 修正: 文言を変更、句点「。」を削除 -->
+                                <p class="text-lg text-gray-700 font-medium">AIが自動で解析<br>範囲の指定をすることも可能</p>
+                            </div>
+                        </div>
+
+                        <!-- 修正: 旧STEP3 -> STEP5 (index4) -->
+                        <div class="slide absolute inset-0 flex flex-col items-center justify-start pt-12 sm:pt-20 px-4 transition-opacity duration-500 opacity-0 z-0 bg-white" data-index="4">
+                             <div class="relative w-full h-[350px] sm:h-[450px] mb-6 bg-slate-50 rounded-xl border flex items-center justify-center">
+                                <div class="absolute top-4 left-4 bg-blue-700 text-white px-4 py-2 rounded-full font-bold shadow-md z-20">STEP 5</div>
+                                <!-- 画像差し替え -->
+                                <img src="https://i.imgur.com/Drhbg37.png" alt="操作手順5" class="w-full h-full object-contain mx-auto rounded-lg">
+                            </div>
+                            <!-- 修正: テキストエリアの高さを固定 -->
+                            <div class="h-20 w-full flex items-start justify-center">
+                                <!-- 修正: 文言を変更（2行表示） -->
+                                <p class="text-lg text-gray-700 font-medium max-w-2xl">解析結果を表示<br>「カウント完了・結果送信」にて、管理コンソールにアップロード</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="prev-slide-btn absolute left-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-slate-100 text-blue-800 p-4 rounded-full shadow-xl focus:outline-none transition z-20 hidden sm:flex border border-slate-100">
+                        <ion-icon name="chevron-back-outline" class="text-3xl"></ion-icon>
+                    </button>
+                    <button class="next-slide-btn absolute right-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-slate-100 text-blue-800 p-4 rounded-full shadow-xl focus:outline-none transition z-20 hidden sm:flex border border-slate-100">
+                        <ion-icon name="chevron-forward-outline" class="text-3xl"></ion-icon>
+                    </button>
+
+                    <!-- 修正: mt-8 -> mt-4 に変更し、インジケータとの余白を狭くする -->
+                    <div class="flex justify-center gap-3 mt-4 carousel-indicators"></div>
+                </div>
+
+                <div class="mt-16 fade-up">
+                    <h3 class="text-center text-2xl font-bold mb-6 text-gray-700">操作風景の動画</h3>
+                    <div class="max-w-3xl mx-auto rounded-xl shadow-2xl overflow-hidden ring-4 ring-slate-100">
+                        <div class="relative w-full aspect-w-16 aspect-h-9 bg-black group">
+                            <!-- 修正: loop=1 と playlist=XmLNBFZDpJA を追加してリピート再生に設定 -->
+                            <iframe width="560" height="315" src="https://www.youtube.com/embed/XmLNBFZDpJA?loop=1&playlist=XmLNBFZDpJA&si=swOQmLWntTdRav2x" title="YouTube video player" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen class="absolute top-0 left-0 w-full h-full"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-24 bg-white text-center">
+            <div class="container mx-auto px-6">
+                <!-- 見出し部分：z-indexを上げてクリック干渉を防ぐ -->
+                <div class="relative w-full overflow-hidden mb-6 flex items-center justify-center text-center fade-up z-20">
+                     <h2 class="relative z-10 text-4xl font-bold tracking-tight text-gray-800">発案者の想い</h2>
+                </div>
+                <!-- 本文部分：relative と z-20 を追加して前面に配置し、背面のリンク干渉を防ぐ -->
+                <div class="relative z-20 max-w-3xl mx-auto mb-6 text-gray-600 leading-relaxed fade-up text-left md:text-center">
+                    <p class="mb-4">現場の苦労を知るパイプ屋が、手作業から画像認識、そしてAIへと進化させた結晶です。<br class="hidden md:inline">
+                    数えきれない試行錯誤の末にたどり着いた、現場のための「AIパイプカウンター」。<br class="hidden md:inline">
+                    発案者である山本特殊鋼株式会社の山本正浩取締役にお話しを伺いました。</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-8 items-stretch fade-up">
+                    <div class="md:col-span-3 flex flex-col">
+                        <div class="bg-white p-2 rounded-xl shadow-lg h-full">
+                            <h3 class="text-xl font-bold mb-4 pt-2 text-blue-900">インタビュー動画</h3>
+                            <!-- 動画部分：相対配置を確認 -->
+                            <div class="relative z-10 aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-black shadow-md group cursor-pointer yt-thumbnail-container">
+                                <!-- 修正: loop=1 と playlist=KXA4LdTCm00 を追加してリピート再生に設定 -->
+                                <iframe width="560" height="315" src="https://www.youtube.com/embed/KXA4LdTCm00?loop=1&playlist=KXA4LdTCm00&si=7UkLMmNopjflidET" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="absolute top-0 left-0 w-full h-full"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 flex flex-col">
+                        <div class="bg-white p-4 rounded-xl shadow-lg h-full flex flex-col">
+                             <h3 class="text-xl font-bold mb-4 text-blue-900">日刊鉄鋼新聞：2024年7月4日付</h3>
+                            <div class="rounded-lg border-2 border-slate-100 p-2 flex-grow flex items-center justify-center bg-slate-50">
+                                 <img src="https://i.imgur.com/Ec9oe4T.png" alt="鉄鋼新聞の記事" class="w-full h-auto object-contain max-h-full shadow-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 現場改善コラムのセクションを復活 -->
+        <section class="py-12 bg-slate-50">
+            <div class="container mx-auto px-6">
+                <a href="https://upload-gp.co.jp/column/" target="_blank" rel="noopener noreferrer" class="block relative rounded-2xl overflow-hidden shadow-xl group hover:shadow-2xl transition duration-300 transform hover:-translate-y-1">
+                    <div class="absolute inset-0 bg-gradient-to-r from-blue-900 via-indigo-800 to-blue-700 opacity-95 transition duration-300 group-hover:opacity-100"></div>
+                    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                    
+                    <div class="relative z-10 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div class="text-left w-full md:w-auto">
+                            <div class="inline-flex items-center gap-2 bg-cyan-400 text-blue-900 text-xs font-bold px-3 py-1 rounded-full mb-3 shadow-sm">
+                                <ion-icon name="bulb"></ion-icon> お役立ち情報
+                            </div>
+                            <h3 class="text-2xl md:text-3xl font-bold text-white mb-3 flex items-center gap-3">
+                                <ion-icon name="newspaper-outline" class="text-cyan-300"></ion-icon>
+                                現場改善コラム
+                            </h3>
+                            <p class="text-blue-100 text-sm md:text-base leading-relaxed">
+                                在庫管理のノウハウや業界の最新トレンドなど、<br class="hidden md:block">
+                                現場の生産性向上に役立つ情報を発信しています。
+                            </p>
+                        </div>
+                        <div class="flex-shrink-0 w-full md:w-auto text-center">
+                            <span class="inline-flex items-center justify-center w-full md:w-auto px-8 py-4 bg-white text-blue-900 font-bold rounded-full shadow-lg group-hover:bg-blue-50 transition duration-300">
+                                コラム一覧を見る
+                                <ion-icon name="arrow-forward-circle" class="ml-2 text-2xl text-blue-600"></ion-icon>
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section class="py-24 bg-white relative overflow-hidden">
+            <div class="container mx-auto px-6">
+                <h2 class="section-heading fade-up">導入までの流れ</h2>
+                <p class="text-center max-w-2xl mx-auto mb-16 text-gray-600 fade-up">
+                    いきなりの本契約ではありません。<br>
+                    まずは<span class="text-orange-500 font-bold bg-orange-50 px-1 rounded">無料デモ</span>や<span class="text-blue-700 font-bold bg-blue-50 px-1 rounded">PoC（実証実験）</span>で、効果を実感してください。
+                </p>
+
+                <div class="relative max-w-7xl mx-auto fade-up delay-100 px-4">
+                    <div class="hidden md:block absolute top-12 left-10 right-10 h-1 bg-slate-100 -z-10">
+                        <div class="h-full w-full bg-gradient-to-r from-slate-200 via-blue-200 to-slate-200"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-7 gap-8 md:gap-4 items-start">
+                        <div class="relative flex flex-col items-center text-center group transform md:-translate-y-2 transition-transform duration-300">
+                            <div class="absolute -top-10 text-orange-500 font-bold text-sm animate-bounce hidden md:block">Start!</div>
+                            
+                            <div class="w-24 h-24 bg-orange-50 border-4 border-orange-400 rounded-full flex items-center justify-center mb-4 shadow-lg z-20 relative bg-white">
+                                <ion-icon name="phone-portrait-outline" class="text-4xl text-orange-500"></ion-icon>
+                            </div>
+                            <div class="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest shadow-sm relative z-30">STEP 01</div>
+                            <h3 class="font-bold text-orange-800 mb-3">無料デモ利用</h3>
+                            <div class="w-full bg-orange-50 p-3 rounded-lg border border-orange-100 text-left min-h-[80px] flex items-center">
+                                <p class="text-xs text-gray-700 font-medium leading-relaxed">Web上ですぐにお試し。実際の操作感をご確認ください。</p>
+                            </div>
+                        </div>
+
+                        <div class="relative flex flex-col items-center text-center group">
+                            <div class="w-24 h-24 bg-white border-4 border-slate-100 rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:border-blue-500 transition-colors duration-300 z-20 relative">
+                                <ion-icon name="chatbubbles-outline" class="text-4xl text-gray-400 group-hover:text-blue-600 transition-colors"></ion-icon>
+                            </div>
+                            <div class="bg-slate-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest relative z-30">STEP 02</div>
+                            <h3 class="font-bold text-gray-800 mb-3">ヒアリング</h3>
+                            <div class="w-full bg-slate-50 p-3 rounded-lg border border-slate-100 text-left min-h-[80px] flex items-center">
+                                <p class="text-xs text-gray-500 leading-relaxed">現状の課題やパイプの種類・環境を確認させていただきます。</p>
+                            </div>
+                        </div>
+
+                        <div class="relative flex flex-col items-center text-center group transform md:-translate-y-4 transition-transform duration-300">
+                            <div class="absolute -top-10 text-blue-600 font-bold text-sm animate-bounce hidden md:block">Check!</div>
+                            
+                            <div class="w-28 h-28 bg-blue-50 border-4 border-blue-500 rounded-full flex items-center justify-center mb-4 shadow-xl z-20 relative bg-white">
+                                <ion-icon name="flask-outline" class="text-5xl text-blue-600"></ion-icon>
+                            </div>
+                            <div class="bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full mb-3 shadow-md tracking-widest relative z-30">STEP 03</div>
+                            <h3 class="font-bold text-blue-800 mb-3 text-lg">PoC (実証実験)</h3>
+                            <div class="w-full bg-blue-50 p-3 rounded-lg border border-blue-100 text-left min-h-[80px] flex items-center">
+                                <p class="text-xs text-gray-600 font-bold leading-relaxed">実際の現場画像を用いて、AIモデルの作成と精度検証を行います。</p>
+                            </div>
+                        </div>
+
+                        <div class="relative flex flex-col items-center text-center group">
+                            <div class="w-24 h-24 bg-white border-4 border-slate-100 rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:border-blue-500 transition-colors duration-300 z-20 relative">
+                                <ion-icon name="analytics-outline" class="text-4xl text-gray-400 group-hover:text-blue-600 transition-colors"></ion-icon>
+                            </div>
+                            <div class="bg-slate-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest relative z-30">STEP 04</div>
+                            <h3 class="font-bold text-gray-800 mb-3">検証報告</h3>
+                            <div class="w-full bg-slate-50 p-3 rounded-lg border border-slate-100 text-left min-h-[80px] flex items-center">
+                                <p class="text-xs text-gray-500 leading-relaxed">検証結果に基づき、精度レポート等をご提示します。</p>
+                            </div>
+                        </div>
+
+                        <div class="relative flex flex-col items-center text-center group">
+                            <div class="w-24 h-24 bg-white border-4 border-slate-100 rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:border-blue-500 transition-colors duration-300 z-20 relative">
+                                <ion-icon name="document-text-outline" class="text-4xl text-gray-400 group-hover:text-blue-600 transition-colors"></ion-icon>
+                            </div>
+                            <div class="bg-slate-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest relative z-30">STEP 05</div>
+                            <h3 class="font-bold text-gray-800 mb-3">ご契約・構築</h3>
+                            <div class="w-full bg-slate-50 p-3 rounded-lg border border-slate-100 text-left min-h-[80px] flex items-center">
+                                <p class="text-xs text-gray-500 leading-relaxed">ご契約後、お客様専用の本番環境を開発・構築します。完了次第、利用開始となります。</p>
+                            </div>
+                        </div>
+
+                        <div class="relative flex flex-col items-center text-center group transform md:-translate-y-4 transition-transform duration-300">
+                            <div class="absolute -top-10 text-indigo-600 font-bold text-sm animate-bounce hidden md:block">Goal!</div>
+                            
+                            <div class="w-28 h-28 bg-indigo-50 border-4 border-indigo-500 rounded-full flex items-center justify-center mb-4 shadow-xl z-20 relative bg-white">
+                                <ion-icon name="rocket-outline" class="text-5xl text-indigo-600"></ion-icon>
+                            </div>
+                            <div class="bg-indigo-600 text-white text-xs font-bold px-4 py-1 rounded-full mb-3 shadow-md tracking-widest relative z-30">STEP 06</div>
+                            <h3 class="font-bold text-indigo-800 mb-3 text-lg">運用開始</h3>
+                            <div class="w-full bg-indigo-50 p-3 rounded-lg border border-indigo-100 text-left min-h-[80px] flex items-center">
+                                <p class="text-xs text-gray-600 font-bold leading-relaxed">いよいよ本番稼働です。貴社の業務効率化がここから始まります。</p>
+                            </div>
+                        </div>
+
+                        <div class="relative flex flex-col items-center text-center group">
+                            <div class="w-24 h-24 bg-white border-4 border-slate-100 rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:border-blue-500 transition-colors duration-300 z-20 bg-white">
+                                <ion-icon name="construct-outline" class="text-4xl text-gray-400 group-hover:text-blue-600 transition-colors"></ion-icon>
+                            </div>
+                            <div class="bg-slate-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest relative z-30">STEP 07</div>
+                            <h3 class="font-bold text-gray-800 mb-3">運用サポート</h3>
+                            <div class="w-full bg-slate-50 p-3 rounded-lg border border-slate-100 text-left min-h-[80px] flex items-center">
+                                <p class="text-xs text-gray-500 leading-relaxed">現場への定着まで、運用方法のレクチャーなど手厚くサポートします。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-12 fade-up delay-200">
+                    <a href="#contact" class="inline-flex items-center gap-2 text-blue-700 font-bold hover:text-blue-800 transition border-b border-blue-700 pb-1">
+                        まずは無料でデモを利用する
+                        <ion-icon name="arrow-forward"></ion-icon>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-24 bg-slate-200">
+            <div class="container mx-auto px-6 max-w-4xl">
+                <h2 class="text-4xl font-extrabold text-center mb-16 text-slate-800 fade-up">
+                    よくあるご質問 (FAQ)
+                </h2>
+
+                <div class="space-y-6">
+                    <details class="bg-white p-6 rounded-xl shadow-md transition duration-300 hover:shadow-lg open:shadow-xl group fade-up">
+                        <summary class="flex justify-between items-center cursor-pointer text-xl font-semibold text-gray-700 hover:text-blue-700">
+                            デモの際、撮影をした写真はどのように管理されますか？
+                            <span class="text-2xl transform transition-transform duration-300 group-open:rotate-45 text-blue-500">+</span>
+                        </summary>
+                        <div class="pt-4 text-gray-600 border-t mt-4 border-slate-100">
+                            <p>撮影をされた写真は弊社管理下のクラウドストレージに暗号化された状態で保管をしますので、ご安心ください。</p>
+                        </div>
+                    </details>
+                    <details class="bg-white p-6 rounded-xl shadow-md transition duration-300 hover:shadow-lg open:shadow-xl group fade-up">
+                        <summary class="flex justify-between items-center cursor-pointer text-xl font-semibold text-gray-700 hover:text-blue-700">
+                            利用するにあたり動作環境の指定はありますか？
+                            <span class="text-2xl transform transition-transform duration-300 group-open:rotate-45 text-blue-500">+</span>
+                        </summary>
+                        <div class="pt-4 text-gray-600 border-t mt-4 border-slate-100">
+                            <p class="mb-4 text-sm">推奨環境は以下の通りです。</p>
+                            <div class="overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+                                <table class="w-full text-sm text-left">
+                                    <tbody class="divide-y divide-slate-100">
+                                        <tr class="bg-slate-50">
+                                            <th class="px-4 py-3 font-bold text-slate-700 w-1/3">OS</th>
+                                            <td class="px-4 py-3 bg-white">不問（ブラウザが動作すれば可）</td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <th class="px-4 py-3 font-bold text-slate-700">メモリ</th>
+                                            <td class="px-4 py-3 bg-white">一般的なPC、スマートフォンで動作可能</td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <th class="px-4 py-3 font-bold text-slate-700">ネット接続</th>
+                                            <td class="px-4 py-3 bg-white">
+                                                必須（AIサーバー通信用）<br>
+                                                <span class="text-xs text-blue-600">※Wi-Fi環境での利用を推奨</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <th class="px-4 py-3 font-bold text-slate-700">カメラ</th>
+                                            <td class="px-4 py-3 bg-white">
+                                                400万画素以上を推奨<br>
+                                                <span class="text-xs text-gray-500">（スマホ内蔵、WEBカメラ、外付け等）</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <th class="px-4 py-3 font-bold text-slate-700">ブラウザ</th>
+                                            <td class="px-4 py-3 bg-white">Chrome, Safari, Edge の最新版</td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <th class="px-4 py-3 font-bold text-slate-700">その他</th>
+                                            <td class="px-4 py-3 bg-white">インストール不要（Webアプリ）</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </details>
+                    <details class="bg-white p-6 rounded-xl shadow-md transition duration-300 hover:shadow-lg open:shadow-xl group fade-up">
+                        <summary class="flex justify-between items-center cursor-pointer text-xl font-semibold text-gray-700 hover:text-blue-700">
+                            計測するパイプの形状・色の指定はありますか？
+                            <span class="text-2xl transform transition-transform duration-300 group-open:rotate-45 text-blue-500">+</span>
+                        </summary>
+                        <div class="pt-4 text-gray-600 border-t mt-4 border-slate-100">
+                            <p>デモ環境では丸型のみ対応可能です。本番環境については、お客様の環境・ご要望に応じた開発が可能です。パイプ色については、メタル色・白色を想定しています。</p>
+                        </div>
+                    </details>            
+                    <details class="bg-white p-6 rounded-xl shadow-md transition duration-300 hover:shadow-lg open:shadow-xl group fade-up">
+                        <summary class="flex justify-between items-center cursor-pointer text-xl font-semibold text-gray-700 hover:text-blue-700">
+                            初期費用や月額費用はいくらですか？
+                            <span class="text-2xl transform transition-transform duration-300 group-open:rotate-45 text-blue-500">+</span>
+                        </summary>
+                        <div class="pt-4 text-gray-600 border-t mt-4 border-slate-100">
+                            <!-- 案3の文言に修正済みであることを再確認 -->
+                            <p>お客様のご要望や環境に合わせて、最適なプランをご提案しております。詳細な料金については、お打ち合わせの上でお見積りいたします。</p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="py-24 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white relative overflow-hidden">
+            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+            
+            <div class="container mx-auto px-6 relative z-10">
+                <div class="max-w-4xl mx-auto text-center mb-12">
+                    <!-- 修正: 「変えましょう。」をひとまとまりにして改行崩れを防止 -->
+                    <h2 class="text-3xl md:text-5xl font-extrabold leading-tight mb-6 tracking-tight">
+                        現場の未来を、あなたの決断で<span class="inline-block">変えましょう。</span>
+                    </h2>
+                    <p class="text-lg md:text-xl text-blue-100 font-medium leading-relaxed">
+                        あなたの現場に<span class="text-cyan-400 font-bold mx-1">「正確さ」</span>と<span class="text-cyan-400 font-bold mx-1">「ゆとり」</span>を。<br>
+                        今すぐ無料で効果を実感してください。
+                    </p>
+                </div>
+
+                <div id="contact-form-container" class="w-full max-w-2xl mx-auto bg-white p-8 md:p-10 rounded-2xl shadow-2xl text-gray-800 fade-up relative">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-2xl"></div>
+                    
+                    <h3 class="text-2xl font-bold text-center mb-2 text-gray-800 flex items-center justify-center gap-2">
+                        <ion-icon name="mail-outline" class="text-blue-600"></ion-icon>
+                        お問い合わせ・無料デモ申込
+                    </h3>
+                    
+                    <p class="text-center text-blue-600 font-bold mb-8 text-sm">
+                        現場の「数える」を、AIでもっと簡単に。
+                    </p>
+
+                    <form id="contact-form" action="https://docs.google.com/forms/d/e/1FAIpQLSc-2IjjgrxYNXK_842jI7DzCwpY_r0Uvx7HsVeVjv3_uihvsA/formResponse" method="POST" target="google-form-iframe" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700">お問い合わせ種別 <span class="text-red-500">*</span></label>
+                            <div class="mt-3 space-y-3">
+                                <div class="flex items-center">
+                                    <input id="type-price" name="entry.1660827808" type="radio" value="打ち合わせ希望" required class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                                    <label for="type-price" class="ml-3 block text-sm text-gray-700">打ち合わせ希望</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="type-demo" name="entry.1660827808" type="radio" value="デモ希望" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                                    <label for="type-demo" class="ml-3 block text-sm font-bold text-blue-700">デモ希望</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="type-other" name="entry.1660827808" type="radio" value="__other_option__" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                                    <label for="type-other" class="ml-3 block text-sm text-gray-700">その他</label>
+                                </div>
+                                <!-- 修正: w-full に ml-7 が加わって右にはみ出ていたため、幅を計算式で調整 (w-[calc(100%-1.75rem)]) -->
+                                <input type="text" id="other-inquiry-text" name="entry.1660827808.other_option_response" class="hidden mt-2 ml-7 block w-[calc(100%-1.75rem)] px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="内容をご記入ください">
+                            </div>
+                        </div>
+                         <div>
+                            <label for="name" class="block text-sm font-bold text-gray-700">氏名 <span class="text-red-500">*</span></label>
+                            <input type="text" name="entry.424059689" id="name" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 focus:bg-white">
+                        </div>
+                         <div>
+                            <label for="company" class="block text-sm font-bold text-gray-700">会社名 <span class="text-red-500">*</span></label>
+                            <input type="text" name="entry.1205997689" id="company" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 focus:bg-white">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-bold text-gray-700">メールアドレス <span class="text-red-500">*</span></label>
+                            <input type="email" name="entry.639443703" id="email" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 focus:bg-white">
+                        </div>
+                        <div>
+                            <label for="phone" class="block text-sm font-bold text-gray-700">電話番号 <span class="text-red-500">*</span></label>
+                            <input type="tel" name="entry.1396909812" id="phone" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 focus:bg-white">
+                        </div>
+                         <div>
+                            <label for="timing" class="block text-sm font-bold text-gray-700">導入検討時期</label>
+                            <select id="timing" name="entry.374904422" class="mt-1 block w-full px-4 py-3 border border-gray-300 bg-slate-50 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition focus:bg-white">
+                                <option>すぐにでも</option>
+                                <option>3ヶ月以内</option>
+                                <option>半年以内</option>
+                                <option>情報収集段階</option>
+                            </select>
+                        </div>
+                        <div>
+                             <label for="message" class="block text-sm font-bold text-gray-700">お問い合わせ内容 <span class="text-gray-400 font-normal ml-1">(任意)</span></label>
+                            <textarea id="message" name="entry.399233883" rows="4" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 focus:bg-white" placeholder="ご質問やご要望があればご記入ください"></textarea>
+                        </div>
+
+                        <div class="flex items-start mt-4">
+                            <div class="flex items-center h-5">
+                                <input id="privacy-policy" name="privacy-policy" type="checkbox" required class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded transition cursor-pointer">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="privacy-policy" class="font-medium text-gray-700 cursor-pointer">
+                                    <a href="https://upload-gp.co.jp/privacy_policy/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-500 underline transition">プライバシーポリシー</a>に同意する <span class="text-red-500">*</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="pt-4">
+                            <button id="contact-submit-button" type="submit" class="w-full flex justify-center items-center gap-2 py-4 px-6 border border-transparent rounded-lg shadow-lg text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:-translate-y-1 transition duration-200 btn-shimmer">
+                                <span>送信する</span>
+                                <ion-icon name="paper-plane"></ion-icon>
+                            </button>
+                            <p class="text-xs text-center text-gray-400 mt-3">※営業目的のお問い合わせはお断りしております。</p>
+                        </div>
+                    </form>
+                    <div id="contact-success-message" class="hidden text-left">
+                        <p class="text-sm text-gray-500">（フォームが送信されました。完了ダイアログをご確認ください。）</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <iframe name="google-form-iframe" id="google-form-iframe" style="display:none;"></iframe>
+
+        <div id="success-modal-overlay" class="modal-overlay">
+            <div id="success-modal-content" class="modal-content text-center">
+                <div class="flex justify-center mb-6">
+                    <svg class="w-20 h-20 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-bold mb-3 text-gray-800">お問い合わせ完了</h3>
+                <p class="text-gray-600 mb-8">お問い合わせありがとうございます。内容確認後、追って担当者よりご連絡を差し上げます。</p>
+                <button id="modal-close-button" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition">閉じる</button>
+            </div>
+        </div>
+
+        <div id="image-modal-overlay" class="image-modal-overlay" onclick="closeImageModal()">
+            <img id="expanded-image" src="" alt="拡大画像" class="image-modal-content">
+            <button class="absolute top-6 right-6 text-white text-4xl hover:text-gray-300 transition" onclick="closeImageModal()">
+                <ion-icon name="close-circle-outline"></ion-icon>
+            </button>
+        </div>
+
+    </main>
+        <footer id="fixed-cta" class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur p-4 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+        <div class="max-w-7xl mx-auto text-center">
+            <a href="#contact" class="w-full block sm:inline-block sm:w-auto">
+                <!-- 修正: 色を青に戻し、グラデーションとリングで強調 -->
+                <!-- ring-4 -> ring-8 に変更して枠線を太くしました -->
+                <button class="w-full sm:w-96 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-extrabold text-lg py-3 rounded-full shadow-lg hover:from-blue-500 hover:to-blue-400 transition duration-300 ease-in-out transform hover:scale-105 ring-8 ring-blue-200 border border-white/20 btn-shimmer">
+                    無料でデモを利用する
+                </button>
+            </a>
+        </div>
+    </footer>
+    
+    <footer class="bg-slate-900 text-white">
+        <div class="bg-slate-800 py-12 border-b border-slate-700">
+            <div class="container mx-auto px-6">
+                <div class="max-w-4xl">
+                    <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <ion-icon name="construct-outline" class="text-blue-500"></ion-icon>
+                        システム開発会社としての確かな技術力と実績
+                    </h3>
+                    <p class="text-gray-400 text-sm leading-relaxed mb-4">
+                        <!-- 修正1: <br> を hidden md:inline に変更し、スマホでの強制改行を無効化 -->
+                        弊社は30年以上にわたり、多岐にわたる業界でシステム開発を行ってきた確かな実績がございます。<br class="hidden md:inline">
+                        <!-- 修正2: "業務フロー" を span.inline-block で囲み、単語途中での改行を防止 -->
+                        その豊富な知見を活かし、AIパイプカウンターの導入だけでなく、お客様の既存システム（在庫管理・受発注システム等）との連携や、<span class="inline-block">業務フロー</span>全体を考慮した最適な構築プランもご提案可能です。
+                    </p>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        「単なるツール導入」に留まらない、DXパートナーとして貴社をサポートいたします。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-16 pb-32">
+            <div class="container mx-auto px-6">
+                <div class="flex flex-col md:flex-row justify-between items-center md:items-start gap-6">
+                    <div class="text-center md:text-left">
+                        <span class="text-2xl font-bold tracking-tighter">AIパイプカウンター</span>
+                        <p class="text-gray-400 text-sm mt-1">現場の「数える」を、AIでもっと簡単に。</p>
+                    </div>
+                    
+                    <div class="flex flex-col items-center md:items-end gap-4">
+                        <div class="flex space-x-6">
+                            <a href="https://upload-gp.co.jp/" target="_blank" rel="noopener noreferrer" class="text-gray-200 hover:text-white transition text-sm font-medium border-b border-gray-500 hover:border-white pb-0.5">運営会社</a>
+                            <a href="https://upload-gp.co.jp/privacy_policy/" target="_blank" rel="noopener noreferrer" class="text-gray-200 hover:text-white transition text-sm font-medium border-b border-gray-500 hover:border-white pb-0.5">プライバシーポリシー</a>
+                        </div>
+                        <p class="text-gray-500 text-xs">&copy; UPLOAD All Rights Reserved.</p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ROI Calculator elements
+            const roiForm = document.getElementById('roi-form');
+            const roiResultContainer = document.getElementById('roi-result-container');
+            const roiResult = document.getElementById('roi-result');
+
+            // Google Form submission elements
+            const contactForm = document.getElementById('contact-form');
+            const contactSuccessMessage = document.getElementById('contact-success-message');
+            const typeOtherInput = document.getElementById('type-other');
+            const otherInquiryText = document.getElementById('other-inquiry-text');
+            const iframe = document.getElementById('google-form-iframe');
+
+            // Modal elements
+            const modalOverlay = document.getElementById('success-modal-overlay');
+            const modalCloseButton = document.getElementById('modal-close-button');
+
+            // --- Mobile Menu Logic ---
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+                
+                const mobileLinks = mobileMenu.querySelectorAll('a');
+                mobileLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        mobileMenu.classList.add('hidden');
+                    });
+                });
+            }
+
+            // --- Scroll Animation Logic ---
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.1 // 10% visible
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target); // Run once
+                    }
+                });
+            }, observerOptions);
+
+            const fadeUpElements = document.querySelectorAll('.fade-up');
+            fadeUpElements.forEach(el => observer.observe(el));
+
+            // --- Carousel Logic (Refactored for multiple instances) ---
+            const initCarousel = (containerId, intervalTime = 5000) => {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+
+                const slides = container.querySelectorAll('.slide');
+                const prevBtn = container.querySelector('.prev-slide-btn');
+                const nextBtn = container.querySelector('.next-slide-btn');
+                const indicatorsContainer = container.querySelector('.carousel-indicators');
+                
+                let currentSlide = 0;
+                let intervalId = null;
+
+                // Create indicators (blue style)
+                if (indicatorsContainer) {
+                    slides.forEach((_, index) => {
+                        const dot = document.createElement('button');
+                        dot.className = `w-3 h-3 rounded-full transition-colors duration-300 ${index === 0 ? 'bg-blue-600 scale-125' : 'bg-gray-300 hover:bg-gray-400'}`;
+                        dot.ariaLabel = `Go to slide ${index + 1}`;
+                        dot.addEventListener('click', () => {
+                            goToSlide(index);
+                            resetTimer();
+                        });
+                        indicatorsContainer.appendChild(dot);
+                    });
+                }
+
+                const updateSlides = () => {
+                    slides.forEach((slide, index) => {
+                        if (index === currentSlide) {
+                            slide.classList.remove('opacity-0', 'z-0');
+                            slide.classList.add('opacity-100', 'z-10');
+                        } else {
+                            slide.classList.remove('opacity-100', 'z-0');
+                            slide.classList.add('opacity-0', 'z-0');
+                        }
+                    });
+
+                    if (indicatorsContainer) {
+                        const dots = indicatorsContainer.querySelectorAll('button');
+                        dots.forEach((dot, index) => {
+                            if (index === currentSlide) {
+                                dot.className = 'w-3 h-3 rounded-full transition-colors duration-300 bg-blue-600 scale-125';
+                            } else {
+                                dot.className = 'w-3 h-3 rounded-full transition-colors duration-300 bg-gray-300 hover:bg-gray-400';
+                            }
+                        });
+                    }
+                };
+
+                const nextSlide = () => {
+                    currentSlide = (currentSlide + 1) % slides.length;
+                    updateSlides();
+                };
+
+                const prevSlide = () => {
+                    currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+                    updateSlides();
+                };
+
+                const goToSlide = (index) => {
+                    currentSlide = index;
+                    updateSlides();
+                };
+
+                const startTimer = () => {
+                    if (intervalId) clearInterval(intervalId);
+                    intervalId = setInterval(nextSlide, intervalTime);
+                };
+
+                const stopTimer = () => {
+                    if (intervalId) clearInterval(intervalId);
+                };
+
+                const resetTimer = () => {
+                    stopTimer();
+                    startTimer();
+                };
+
+                if (nextBtn) {
+                    nextBtn.addEventListener('click', () => {
+                        nextSlide();
+                        resetTimer();
+                    });
+                }
+
+                if (prevBtn) {
+                    prevBtn.addEventListener('click', () => {
+                        prevSlide();
+                        resetTimer();
+                    });
+                }
+
+                container.addEventListener('mouseenter', stopTimer);
+                container.addEventListener('mouseleave', startTimer);
+                container.addEventListener('touchstart', stopTimer);
+                container.addEventListener('touchend', startTimer);
+
+                startTimer();
+            };
+
+            initCarousel('carousel-container', 5000);
+            initCarousel('hero-carousel-container', 4000);
+            initCarousel('management-phone-carousel', 3500); 
+
+            // --- ローカル計算によるROI分析（APIキー不要・高速版） ---
+            const performLocalAnalysis = (currentTime, monthlyCounts, hourlyWage) => {
+                const monthlyCountsInt = parseInt(monthlyCounts, 10);
+                const currentTimeInt = parseInt(currentTime, 10);
+                const hourlyWageInt = parseInt(hourlyWage, 10);
+
+                const AI_TIME_PER_COUNT = 10; // AI導入後の1回あたりの秒数
+                const ANNUAL_MONTHS = 12;
+
+                // 計算ロジック
+                // 従来の年間作業時間
+                const currentTotalHours = (currentTimeInt / 3600) * monthlyCountsInt * ANNUAL_MONTHS;
+                
+                // AI導入後の年間作業時間
+                const aiTotalHours = (AI_TIME_PER_COUNT / 3600) * monthlyCountsInt * ANNUAL_MONTHS;
+
+                // 年間削減時間 = 従来 - AI
+                const reductionTime = currentTotalHours - aiTotalHours;
+                
+                // 年間削減コスト = 年間削減時間 * 時給
+                const reductionCost = reductionTime * hourlyWageInt;
+
+                // 評価基準の判定
+                let evaluationText = "";
+                let headerBgClass = "bg-blue-600"; // デフォルト色（青）
+
+                if (reductionCost >= 500000) {
+                    evaluationText = "◎ 導入推奨";
+                } else if (reductionCost > 0) {
+                    // プラスであれば、額に関わらずメリットはあると判定
+                    evaluationText = "〇 導入メリットあり";
+                } else {
+                    // 修正: マイナスの場合でもポジティブに「まずは無料デモで体験」と誘導
+                    // 色もグレーにせず、デフォルトの青(bg-blue-600)を維持します
+                    evaluationText = "まずは無料デモで体験";
+                }
+
+                // 数値のフォーマット（3桁区切り、整数化）
+                const formattedCost = Math.round(reductionCost).toLocaleString();
+                const formattedTime = Math.round(reductionTime).toLocaleString();
+                const formattedCurrentHours = Math.round(currentTotalHours).toLocaleString();
+                const formattedAiHours = Math.round(aiTotalHours).toLocaleString();
+
+                // HTMLの生成
+                return `
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden max-w-sm mx-auto font-sans border border-slate-200 transform transition hover:scale-[1.02] duration-300">
+                        <div class="${headerBgClass} py-3 text-center text-white">
+                            <!-- 修正: 診断結果 -> 分析結果 に統一 -->
+                            <p class="text-[10px] font-bold opacity-80 mb-1 tracking-wider">分析結果</p>
+                            <p class="text-2xl font-bold tracking-wider">${evaluationText}</p>
+                        </div>
+                        
+                        <div class="px-6 py-5">
+                            <div class="mb-4 text-center">
+                                <!-- 年間削減できる人件費を表示 -->
+                                <p class="text-[11px] font-bold text-gray-500 mb-1">年間削減できる人件費</p>
+                                <p class="text-3xl font-bold text-blue-600 tracking-tight">約 ${formattedCost} 円</p>
+                            </div>
+                            
+                            <div class="border-t border-gray-100 my-3"></div>
+
+                            <!-- Before / After の時間比較 -->
+                            <div class="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-500 font-medium text-xs">従来の作業時間</span>
+                                    <span class="font-bold text-gray-600">${formattedCurrentHours} 時間/年</span>
+                                </div>
+                                <div class="flex justify-center text-gray-300 -my-1">
+                                    <ion-icon name="arrow-down-outline"></ion-icon>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <!-- 文言修正: AIパイプカウンター導入 -->
+                                    <span class="text-blue-600 font-bold text-xs">AIパイプカウンター導入</span>
+                                    <span class="font-bold text-blue-600">${formattedAiHours} 時間/年</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3 text-center">
+                                <p class="text-xs font-bold text-gray-400 mb-1">年間削減時間</p>
+                                <p class="text-lg font-bold text-gray-700 tracking-tight">約 ${formattedTime} 時間のゆとり！</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
+
+            // --- ROI Calculator Logic ---
+            if (roiForm) {
+                roiForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const currentTime = document.getElementById('current-time').value;
+                    const monthlyCounts = document.getElementById('monthly-counts').value;
+                    const hourlyWage = document.getElementById('hourly-wage').value;
+
+                    if (!currentTime || !monthlyCounts || !hourlyWage) {
+                        roiResultContainer.classList.remove('hidden');
+                        roiResult.textContent = 'すべての項目を入力してください。';
+                        roiResult.style.color = 'red';
+                        return;
+                    }
+                    roiResult.style.color = 'inherit';
+
+                    roiResultContainer.classList.remove('hidden');
+                    // ローディング表示（一瞬ですが、UXとして残します）
+                    roiResult.innerHTML = `
+                        <div class="flex items-center justify-center p-4">
+                            <div class="typing-indicator">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <!-- "AIが" を削除 -->
+                            <span class="ml-3 text-gray-500">分析中です...</span>
+                        </div>
+                    `;
+
+                    // 少しだけウェイトを入れて計算感を出す（即時表示でも良いが演出として）
+                    setTimeout(() => {
+                        try {
+                            const analysisHTML = performLocalAnalysis(currentTime, monthlyCounts, hourlyWage);
+                            roiResult.innerHTML = analysisHTML;
+                        } catch (error) {
+                            console.error("Error in ROI analysis:", error);
+                            roiResult.textContent = '申し訳ありません、分析中にエラーが発生しました。';
+                        }
+                    }, 800);
+                });
+            }
+
+            // --- Contact Form Logic ---
+            const contactFormRadioButtons = document.querySelectorAll('input[name="entry.1660827808"]');
+            const otherInput = document.getElementById('type-other');
+            const otherText = document.getElementById('other-inquiry-text');
+
+            if (contactFormRadioButtons.length > 0 && otherInput && otherText) {
+                contactFormRadioButtons.forEach(radio => {
+                    radio.addEventListener('change', () => {
+                         if (otherInput.checked) {
+                            otherText.classList.remove('hidden');
+                            otherText.setAttribute('required', 'required');
+                         } else {
+                            otherText.classList.add('hidden');
+                            otherText.removeAttribute('required');
+                         }
+                    });
+                });
+            }
+
+            if (contactForm && iframe && modalOverlay && modalCloseButton) {
+                const showModal = () => {
+                    modalOverlay.classList.add('active');
+                };
+
+                const hideModal = () => {
+                    modalOverlay.classList.remove('active');
+                    contactForm.classList.remove('hidden');
+                    contactSuccessMessage.classList.add('hidden');
+                    contactForm.reset();
+                };
+
+                modalCloseButton.addEventListener('click', hideModal);
+                modalOverlay.addEventListener('click', (e) => {
+                    if (e.target.id === 'success-modal-overlay') {
+                        hideModal();
+                    }
+                });
+
+                contactForm.addEventListener('submit', (e) => {
+                    const submitButton = document.getElementById('contact-submit-button');
+                    submitButton.disabled = true;
+                    submitButton.textContent = '送信中...';
+                    
+                    contactForm.classList.add('hidden');
+                    contactSuccessMessage.classList.remove('hidden');
+
+                    setTimeout(() => {
+                        showModal();
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = '<span>送信する</span><ion-icon name="paper-plane"></ion-icon>';
+                    }, 1500);
+                });
+            }
+        });
+
+        function openImageModal(imageSrc) {
+            const modal = document.getElementById('image-modal-overlay');
+            const expandedImage = document.getElementById('expanded-image');
+            if (modal && expandedImage) {
+                expandedImage.src = imageSrc;
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('image-modal-overlay');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+    </script>
+</body>
+</html>
